@@ -15,6 +15,9 @@ app.use(bodyParser.urlencoded({ extended: false }));
 connectDB();
 
 // Routes
+app.get("/", (req, res) => {
+  res.send("Welcome to the Visitor API");
+});
 app.use("/api", visitorRoutes);
 
 // Start the server
