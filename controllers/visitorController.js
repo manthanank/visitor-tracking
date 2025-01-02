@@ -34,9 +34,10 @@ exports.incrementVisitor = async (req, res) => {
 // Get visitor count for a specific website
 exports.getVisitorCount = async (req, res) => {
     const { website } = req.params;
-  
-    if (!website) {
-        return res.status(400).json({ error: 'Website is required' });
+    const { projectName } = req.query;
+
+    if (!projectName) {
+        return res.status(400).json({ error: 'Project Name is required' });
     }
   
     try {
