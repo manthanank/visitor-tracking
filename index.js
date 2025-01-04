@@ -6,6 +6,7 @@ const visitorRoutes = require("./routes/visitorRoutes");
 const getClientIp = require('./middleware/getClientIp');
 const rateLimiter = require('./middleware/rateLimiter');
 const morgan = require("morgan");
+const errorHandler = require("./middleware/errorHandler");
 require("dotenv").config();
 
 const app = express();
