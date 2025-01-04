@@ -3,6 +3,7 @@ const Visitor = require("../models/Visitor");
 exports.incrementVisitor = async (req, res) => {
   const { projectName } = req.body;
   const ipAddress = req.clientIp;
+  const userAgent = req.headers["user-agent"];
 
   if (!projectName) {
     return res.status(400).json({ error: "Project Name is required" });
