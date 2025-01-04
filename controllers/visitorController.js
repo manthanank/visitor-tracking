@@ -13,8 +13,12 @@ exports.incrementVisitor = async (req, res) => {
     const existingVisit = await Visitor.findOne({ ipAddress, projectName });
 
     if (!existingVisit) {
-      const newVisit = new Visitor({ ipAddress, projectName });
+      const newVisit = new Visitor({ ipAddress, projectName, userAgent });
       await newVisit.save();
+    } else {
+      existingVisit.lastVisit = new Date();
+      existingVisit.userAgent = userAgent;
+      await existingVisit.save();
     }
 
     const visitorCount = await Visitor.countDocuments({ projectName });
