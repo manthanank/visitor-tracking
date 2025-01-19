@@ -5,7 +5,8 @@ const useragent = require("useragent");
 exports.trackVisitor = async (req, res) => {
   const { projectName } = req.body;
   const ipAddress = req.clientIp;
-  const ip = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+  const ip =
+    req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress;
 
   if (!projectName) {
     return res.status(400).json({ error: "Project Name is required" });
@@ -15,14 +16,21 @@ exports.trackVisitor = async (req, res) => {
     const existingVisit = await Visitor.findOne({ ipAddress, projectName });
 
     const geo = geoip.lookup(ip);
-    const agent = useragent.parse(req.headers['user-agent']);
+    const agent = useragent.parse(req.headers["user-agent"]);
     const userAgent = agent.toString();
     const location = geo ? `${geo.city}, ${geo.country}` : "Unknown";
     const device = agent.device.toString();
     const browser = agent.toAgent();
 
     if (!existingVisit) {
-      const newVisit = new Visitor({ ipAddress, projectName, userAgent, location, device, browser });
+      const newVisit = new Visitor({
+        ipAddress,
+        projectName,
+        userAgent,
+        location,
+        device,
+        browser,
+      });
       await newVisit.save();
     } else {
       existingVisit.lastVisit = new Date();
@@ -61,6 +69,10 @@ exports.getVisitorCount = async (req, res) => {
 
 exports.getAllVisitors = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     const visitors = await Visitor.aggregate([
       {
         $group: {
@@ -68,12 +80,26 @@ exports.getAllVisitors = async (req, res) => {
           uniqueVisitors: { $sum: 1 },
         },
       },
+      {
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [{ $skip: skip }, { $limit: limit }],
+        },
+      },
     ]);
 
-    const result = visitors.map((v) => ({
-      projectName: v._id.projectName,
-      uniqueVisitors: v.uniqueVisitors,
-    }));
+    const result = {
+      data: visitors[0].data.map((v) => ({
+        projectName: v._id.projectName,
+        uniqueVisitors: v.uniqueVisitors,
+      })),
+      pagination: {
+        currentPage: page,
+        limit,
+        totalItems: visitors[0].metadata[0]?.total || 0,
+        totalPages: Math.ceil((visitors[0].metadata[0]?.total || 0) / limit),
+      },
+    };
 
     res.json(result);
   } catch (error) {
@@ -107,19 +133,19 @@ exports.getTotalVisits = async (req, res) => {
 
 exports.getVisitorTrend = async (req, res) => {
   const { projectName } = req.params;
-  const { period = 'daily' } = req.query; // daily, weekly, monthly
+  const { period = "daily" } = req.query; // daily, weekly, monthly
 
   try {
     const groupBy = {
       daily: { $dateToString: { format: "%Y-%m-%d", date: "$lastVisit" } },
       weekly: { $week: "$lastVisit" },
-      monthly: { $month: "$lastVisit" }
+      monthly: { $month: "$lastVisit" },
     }[period];
 
     const trend = await Visitor.aggregate([
       { $match: { projectName } },
       { $group: { _id: groupBy, count: { $sum: 1 } } },
-      { $sort: { _id: 1 } }
+      { $sort: { _id: 1 } },
     ]);
 
     res.json(trend);
@@ -163,7 +189,9 @@ exports.updateVisitorInfo = async (req, res) => {
   const updateData = req.body;
 
   try {
-    const updatedVisitor = await Visitor.findByIdAndUpdate(id, updateData, { new: true });
+    const updatedVisitor = await Visitor.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
     res.json(updatedVisitor);
   } catch (error) {
     console.error(error);
@@ -182,8 +210,8 @@ exports.getVisitorStatistics = async (req, res) => {
           _id: null,
           mostUsedBrowser: { $first: "$userAgent" }, // Simplified for example
           mostUsedDevice: { $first: "$device" }, // Simplified for example
-        }
-      }
+        },
+      },
     ]);
 
     res.json(statistics[0]);
