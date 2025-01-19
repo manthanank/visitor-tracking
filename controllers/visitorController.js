@@ -79,19 +79,7 @@ exports.getAllVisitors = async (req, res) => {
 
 exports.getAllLocations = async (req, res) => {
   try {
-    const locations = await Visitor.aggregate([
-      {
-        $group: {
-          _id: "$location",
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          location: "$_id",
-        },
-      },
-    ]);
+    const locations = await Visitor.distinct("location");
 
     res.json(locations);
   } catch (error) {
