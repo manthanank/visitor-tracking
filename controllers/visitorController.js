@@ -82,6 +82,29 @@ exports.getAllVisitors = async (req, res) => {
   }
 };
 
+exports.getTotalVisits = async (req, res) => {
+  try {
+    const visitors = await Visitor.aggregate([
+      {
+        $group: {
+          _id: { projectName: "$projectName" },
+          uniqueVisitors: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const result = visitors.map((v) => ({
+      projectName: v._id.projectName,
+      uniqueVisitors: v.uniqueVisitors,
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 exports.getVisitorTrend = async (req, res) => {
   const { projectName } = req.params;
   const { period = 'daily' } = req.query; // daily, weekly, monthly
