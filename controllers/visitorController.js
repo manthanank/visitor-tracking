@@ -59,7 +59,8 @@ exports.getVisitorCount = async (req, res) => {
   }
 
   try {
-    const visitorCount = await Visitor.countDocuments({ projectName });
+    const matchStage = projectName === "All" ? {} : { projectName };
+    const visitorCount = await Visitor.countDocuments(matchStage);
     res.json({ projectName, uniqueVisitors: visitorCount });
   } catch (error) {
     console.error(error);
@@ -69,10 +70,6 @@ exports.getVisitorCount = async (req, res) => {
 
 exports.getAllVisitors = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
     const visitors = await Visitor.aggregate([
       {
         $group: {
@@ -80,26 +77,12 @@ exports.getAllVisitors = async (req, res) => {
           uniqueVisitors: { $sum: 1 },
         },
       },
-      {
-        $facet: {
-          metadata: [{ $count: "total" }],
-          data: [{ $skip: skip }, { $limit: limit }],
-        },
-      },
     ]);
 
-    const result = {
-      data: visitors[0].data.map((v) => ({
-        projectName: v._id.projectName,
-        uniqueVisitors: v.uniqueVisitors,
-      })),
-      pagination: {
-        currentPage: page,
-        limit,
-        totalItems: visitors[0].metadata[0]?.total || 0,
-        totalPages: Math.ceil((visitors[0].metadata[0]?.total || 0) / limit),
-      },
-    };
+    const result = visitors.map((v) => ({
+      projectName: v._id.projectName,
+      uniqueVisitors: v.uniqueVisitors,
+    }));
 
     res.json(result);
   } catch (error) {
@@ -133,7 +116,7 @@ exports.getTotalVisits = async (req, res) => {
 
 exports.getVisitorTrend = async (req, res) => {
   const { projectName } = req.params;
-  const { period = "daily" } = req.query; // daily, weekly, monthly
+  const { period } = req.query;
 
   try {
     const groupBy = {
@@ -142,8 +125,10 @@ exports.getVisitorTrend = async (req, res) => {
       monthly: { $month: "$lastVisit" },
     }[period];
 
+    const matchStage = projectName === "All" ? {} : { projectName };
+
     const trend = await Visitor.aggregate([
-      { $match: { projectName } },
+      { $match: matchStage },
       { $group: { _id: groupBy, count: { $sum: 1 } } },
       { $sort: { _id: 1 } },
     ]);
@@ -156,12 +141,15 @@ exports.getVisitorTrend = async (req, res) => {
 };
 
 exports.filterVisitors = async (req, res) => {
-  const { device, browser, location } = req.query;
+  const { device, browser, projectName } = req.query;
   const filter = {};
 
   if (device) filter.device = device;
-  if (browser) filter.browser = browser;
-  if (location) filter.location = location;
+  if (browser && browser !== "All") filter.browser = browser;
+  if (projectName && projectName !== "All") {
+    filter.projectName = projectName;
+  }
+  console.log(filter);
 
   try {
     const visitors = await Visitor.find(filter);
@@ -203,13 +191,15 @@ exports.getVisitorStatistics = async (req, res) => {
   const { projectName } = req.params;
 
   try {
+    const matchStage = projectName === "All" ? {} : { projectName };
+
     const statistics = await Visitor.aggregate([
-      { $match: { projectName } },
+      { $match: matchStage },
       {
         $group: {
           _id: null,
-          mostUsedBrowser: { $first: "$userAgent" }, // Simplified for example
-          mostUsedDevice: { $first: "$device" }, // Simplified for example
+          mostUsedBrowser: { $first: "$userAgent" },
+          mostUsedDevice: { $first: "$device" },
         },
       },
     ]);
