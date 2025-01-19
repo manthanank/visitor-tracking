@@ -128,15 +128,14 @@ exports.getVisitorTrend = async (req, res) => {
 };
 
 exports.filterVisitors = async (req, res) => {
-  const { device, browser, projectName } = req.query;
+  const { device, browser, projectName, startDate, endDate } = req.query;
   const filter = {};
 
   if (device) filter.device = device;
   if (browser && browser !== "All") filter.browser = browser;
-  if (projectName && projectName !== "All") {
-    filter.projectName = projectName;
-  }
-  console.log(filter);
+  if (projectName && projectName !== "All") filter.projectName = projectName;
+  if (startDate) filter.lastVisit = { $gte: new Date(startDate) };
+  if (endDate) filter.lastVisit = { ...filter.lastVisit, $lte: new Date(endDate) };
 
   try {
     const visitors = await Visitor.find(filter);
