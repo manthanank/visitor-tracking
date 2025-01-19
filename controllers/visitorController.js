@@ -4,9 +4,7 @@ const useragent = require("useragent");
 
 exports.trackVisitor = async (req, res) => {
   const { projectName } = req.body;
-  const ipAddress = req.clientIp;
-  const ip =
-    req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+  const ipAddress = req.clientIp || req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress;
 
   if (!projectName) {
     return res.status(400).json({ error: "Project Name is required" });
@@ -14,27 +12,28 @@ exports.trackVisitor = async (req, res) => {
 
   try {
     const existingVisit = await Visitor.findOne({ ipAddress, projectName });
-
-    const geo = geoip.lookup(ip);
+    const geo = geoip.lookup(ipAddress);
     const agent = useragent.parse(req.headers["user-agent"]);
     const userAgent = agent.toString();
     const location = geo ? `${geo.city}, ${geo.country}` : "Unknown";
     const device = agent.device.toString();
     const browser = agent.toAgent();
 
+    const visitData = {
+      ipAddress,
+      projectName,
+      userAgent,
+      location,
+      device,
+      browser,
+      lastVisit: new Date(),
+    };
+
     if (!existingVisit) {
-      const newVisit = new Visitor({
-        ipAddress,
-        projectName,
-        userAgent,
-        location,
-        device,
-        browser,
-      });
+      const newVisit = new Visitor(visitData);
       await newVisit.save();
     } else {
-      existingVisit.lastVisit = new Date();
-      existingVisit.userAgent = userAgent;
+      Object.assign(existingVisit, visitData);
       await existingVisit.save();
     }
 
@@ -72,6 +71,29 @@ exports.getAllVisitors = async (req, res) => {
   try {
     const visitors = await Visitor.find();
     res.json(visitors);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.getAllLocations = async (req, res) => {
+  try {
+    const locations = await Visitor.aggregate([
+      {
+        $group: {
+          _id: "$location",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          location: "$_id",
+        },
+      },
+    ]);
+
+    res.json(locations);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
@@ -135,7 +157,8 @@ exports.filterVisitors = async (req, res) => {
   if (browser && browser !== "All") filter.browser = browser;
   if (projectName && projectName !== "All") filter.projectName = projectName;
   if (startDate) filter.lastVisit = { $gte: new Date(startDate) };
-  if (endDate) filter.lastVisit = { ...filter.lastVisit, $lte: new Date(endDate) };
+  if (endDate)
+    filter.lastVisit = { ...filter.lastVisit, $lte: new Date(endDate) };
 
   try {
     const visitors = await Visitor.find(filter);

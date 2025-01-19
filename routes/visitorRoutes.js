@@ -5,6 +5,7 @@ const visitorController = require("../controllers/visitorController");
 router.post("/visit", visitorController.trackVisitor);
 router.get("/visit/:projectName", visitorController.getVisitorCount);
 router.get("/visits", visitorController.getAllVisitors);
+router.get("/locations", visitorController.getAllLocations);
 router.get("/total-visits", visitorController.getTotalVisits);
 router.get("/visit-trend/:projectName", visitorController.getVisitorTrend);
 router.get("/filter-visit", visitorController.filterVisitors);
