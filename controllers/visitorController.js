@@ -79,9 +79,34 @@ exports.getAllVisitors = async (req, res) => {
 
 exports.getAllLocations = async (req, res) => {
   try {
-    const locations = await Visitor.distinct("location");
+    const locations = await Visitor.aggregate([
+      { $group: { _id: "$location", count: { $sum: 1 } } },
+    ]);
 
-    res.json(locations);
+    const result = locations.map((l) => ({
+      location: l._id,
+      visitorCount: l.count,
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.getAllDevices = async (req, res) => {
+  try {
+    const devices = await Visitor.aggregate([
+      { $group: { _id: "$device", count: { $sum: 1 } } },
+    ]);
+
+    const result = devices.map((d) => ({
+      device: d._id,
+      visitorCount: d.count,
+    }));
+
+    res.json(result);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
@@ -138,15 +163,18 @@ exports.getVisitorTrend = async (req, res) => {
 };
 
 exports.filterVisitors = async (req, res) => {
-  const { device, browser, projectName, startDate, endDate } = req.query;
+  const { device, browser, projectName, startDate, endDate, location } = req.query;
   const filter = {};
 
-  if (device) filter.device = device;
+  if (device && device !== "All") filter.device = device;
   if (browser && browser !== "All") filter.browser = browser;
   if (projectName && projectName !== "All") filter.projectName = projectName;
-  if (startDate) filter.lastVisit = { $gte: new Date(startDate) };
-  if (endDate)
-    filter.lastVisit = { ...filter.lastVisit, $lte: new Date(endDate) };
+  if (startDate || endDate) {
+    filter.lastVisit = {};
+    if (startDate) filter.lastVisit.$gte = new Date(startDate).setHours(0, 0, 0, 0);
+    if (endDate) filter.lastVisit.$lte = new Date(endDate).setHours(23, 59, 59, 999);
+  }
+  if (location && location !== "All") filter.location = location;
 
   try {
     const visitors = await Visitor.find(filter);
