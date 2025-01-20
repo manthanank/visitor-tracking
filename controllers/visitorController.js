@@ -225,6 +225,7 @@ exports.getVisitorStatistics = async (req, res) => {
           _id: null,
           mostUsedBrowser: { $first: "$userAgent" },
           mostUsedDevice: { $first: "$device" },
+          mostVisitedLocation: { $first: "$location" },
         },
       },
     ]);
