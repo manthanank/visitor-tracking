@@ -1,6 +1,7 @@
 const Visitor = require("../models/Visitor");
 const geoip = require("geoip-lite");
 const useragent = require("useragent");
+const logger = require("../middleware/logger");
 
 exports.trackVisitor = async (req, res) => {
   const { projectName } = req.body;
@@ -45,7 +46,7 @@ exports.trackVisitor = async (req, res) => {
       uniqueVisitors: visitorCount,
     });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -62,7 +63,7 @@ exports.getVisitorCount = async (req, res) => {
     const visitorCount = await Visitor.countDocuments(matchStage);
     res.json({ projectName, uniqueVisitors: visitorCount });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -72,7 +73,7 @@ exports.getAllVisitors = async (req, res) => {
     const visitors = await Visitor.find();
     res.json(visitors);
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -90,7 +91,7 @@ exports.getAllLocations = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -108,7 +109,7 @@ exports.getAllDevices = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -131,7 +132,7 @@ exports.getTotalVisits = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -157,7 +158,7 @@ exports.getVisitorTrend = async (req, res) => {
 
     res.json(trend);
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -180,7 +181,7 @@ exports.filterVisitors = async (req, res) => {
     const visitors = await Visitor.find(filter);
     res.json(visitors);
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -192,7 +193,7 @@ exports.deleteVisitor = async (req, res) => {
     await Visitor.findByIdAndDelete(id);
     res.json({ message: "Visitor deleted successfully" });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -207,7 +208,7 @@ exports.updateVisitorInfo = async (req, res) => {
     });
     res.json(updatedVisitor);
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -232,7 +233,7 @@ exports.getVisitorStatistics = async (req, res) => {
 
     res.json(statistics[0]);
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
