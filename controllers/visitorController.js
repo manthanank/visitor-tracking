@@ -5,7 +5,11 @@ const logger = require("../middleware/logger");
 
 exports.trackVisitor = async (req, res) => {
   const { projectName } = req.body;
-  const ipAddress = req.clientIp || req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+  const ipAddress =
+    req.clientIp ||
+    req.ip ||
+    req.headers["x-forwarded-for"] ||
+    req.connection.remoteAddress;
 
   if (!projectName) {
     return res.status(400).json({ error: "Project Name is required" });
@@ -164,7 +168,12 @@ exports.getVisitorTrend = async (req, res) => {
 };
 
 exports.filterVisitors = async (req, res) => {
-  const { device, browser, projectName, startDate, endDate, location } = req.query;
+  const { device, browser, projectName, startDate, endDate, location } =
+    req.query;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
   const filter = {};
 
   if (device && device !== "All") filter.device = device;
@@ -172,14 +181,22 @@ exports.filterVisitors = async (req, res) => {
   if (projectName && projectName !== "All") filter.projectName = projectName;
   if (startDate || endDate) {
     filter.lastVisit = {};
-    if (startDate) filter.lastVisit.$gte = new Date(startDate).setHours(0, 0, 0, 0);
-    if (endDate) filter.lastVisit.$lte = new Date(endDate).setHours(23, 59, 59, 999);
+    if (startDate)
+      filter.lastVisit.$gte = new Date(startDate).setHours(0, 0, 0, 0);
+    if (endDate)
+      filter.lastVisit.$lte = new Date(endDate).setHours(23, 59, 59, 999);
   }
   if (location && location !== "All") filter.location = location;
 
   try {
-    const visitors = await Visitor.find(filter);
-    res.json(visitors);
+    const visitors = await Visitor.find(filter)
+      .skip(skip)
+      .limit(limit)
+      .sort({ lastVisit: -1 });
+    const totalVisitors = await Visitor.countDocuments(filter);
+    const totalPages = Math.ceil(totalVisitors / limit);
+
+    res.json({ visitors, totalVisitors, totalPages, currentPage: page });
   } catch (error) {
     logger.error(error);
     res.status(500).json({ error: "Internal server error" });
