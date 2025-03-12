@@ -254,3 +254,149 @@ exports.getVisitorStatistics = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+exports.getVisitorByIp = async (req, res) => {
+  const { ipAddress } = req.params;
+
+  if (!ipAddress) {
+    return res.status(400).json({ error: "IP Address is required" });
+  }
+
+  try {
+    const visitors = await Visitor.find({ ipAddress });
+
+    if (!visitors || visitors.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "No visitor found with this IP address" });
+    }
+
+    res.json(visitors);
+  } catch (error) {
+    logger.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.getVisitorsByDateRange = async (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  if (!startDate || !endDate) {
+    return res
+      .status(400)
+      .json({ error: "Start date and end date are required" });
+  }
+
+  try {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res
+        .status(400)
+        .json({ error: "Invalid date format. Use YYYY-MM-DD" });
+    }
+
+    const visitors = await Visitor.find({
+      lastVisit: {
+        $gte: start,
+        $lte: end,
+      },
+    }).sort({ lastVisit: -1 });
+
+    const visitorCount = visitors.length;
+
+    res.json({
+      startDate,
+      endDate,
+      visitorCount,
+      visitors,
+    });
+  } catch (error) {
+    logger.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.getUniqueVisitorsDaily = async (req, res) => {
+  const { projectName } = req.params;
+  const { startDate, endDate } = req.query;
+
+  try {
+    // Create date range filter
+    const dateFilter = {};
+    if (startDate) {
+      dateFilter.$gte = new Date(startDate);
+      dateFilter.$gte.setHours(0, 0, 0, 0);
+    } else {
+      // Default to last 30 days if no start date provided
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+      dateFilter.$gte = thirtyDaysAgo;
+    }
+
+    if (endDate) {
+      dateFilter.$lte = new Date(endDate);
+      dateFilter.$lte.setHours(23, 59, 59, 999);
+    } else {
+      // Default to current date if no end date provided
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      dateFilter.$lte = today;
+    }
+
+    // Create project filter
+    const projectFilter = projectName === "All" ? {} : { projectName };
+
+    // Aggregate to get unique visitors per day
+    const dailyVisitors = await Visitor.aggregate([
+      {
+        $match: {
+          ...projectFilter,
+          lastVisit: dateFilter,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$lastVisit" } },
+            ipAddress: "$ipAddress",
+          },
+          lastVisit: { $max: "$lastVisit" },
+        },
+      },
+      {
+        $group: {
+          _id: "$_id.date",
+          uniqueVisitors: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { _id: 1 },
+      },
+      {
+        $project: {
+          _id: 0,
+          date: "$_id",
+          uniqueVisitors: 1,
+        },
+      },
+    ]);
+
+    res.json({
+      projectName,
+      period: {
+        startDate: dateFilter.$gte.toISOString().split("T")[0],
+        endDate: dateFilter.$lte.toISOString().split("T")[0],
+      },
+      dailyActiveUsers: dailyVisitors,
+    });
+  } catch (error) {
+    logger.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
