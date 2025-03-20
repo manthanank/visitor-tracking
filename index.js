@@ -28,9 +28,7 @@ app.use(rateLimiter);
 connectDB();
 
 // Routes
-app.get("/", (req, res) => {
-  res.send("Welcome to the Visitor API");
-});
+app.get("/", (req, res) => res.send("Welcome to the Visitor API"));
 app.use("/api", visitorRoutes);
 
 // Swagger documentation route

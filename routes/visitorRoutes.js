@@ -45,7 +45,7 @@ const visitorController = require("../controllers/visitorController");
 
 /**
  * @swagger
- * /api/visit:
+ * /visit:
  *   post:
  *     summary: Track a visitor
  *     tags: [Visitors]
@@ -72,7 +72,7 @@ router.post("/visit", visitorController.trackVisitor);
 
 /**
  * @swagger
- * /api/visits:
+ * /visits:
  *   get:
  *     summary: Get all visitors
  *     tags: [Visitors]
@@ -86,7 +86,7 @@ router.get("/visits", visitorController.getAllVisitors);
 
 /**
  * @swagger
- * /api/visit/{id}:
+ * /visit/{id}:
  *   put:
  *     summary: Update visitor information
  *     tags: [Visitors]
@@ -113,7 +113,7 @@ router.put("/visit/:id", visitorController.updateVisitorInfo);
 
 /**
  * @swagger
- * /api/visit/{id}:
+ * /visit/{id}:
  *   delete:
  *     summary: Delete a visitor
  *     tags: [Visitors]
@@ -138,7 +138,7 @@ router.delete("/visit/:id", visitorController.deleteVisitor);
 
 /**
  * @swagger
- * /api/filter-visit:
+ * /filter-visit:
  *   get:
  *     summary: Filter visitors by various parameters
  *     tags: [Visitors]
@@ -197,7 +197,7 @@ router.get("/filter-visit", visitorController.filterVisitors);
 
 /**
  * @swagger
- * /api/visit-ip/{ipAddress}:
+ * /visit-ip/{ipAddress}:
  *   get:
  *     summary: Get visitor by IP address
  *     tags: [Visitors]
@@ -222,7 +222,7 @@ router.get("/visit-ip/:ipAddress", visitorController.getVisitorByIp);
 
 /**
  * @swagger
- * /api/visits-by-date:
+ * /visits-by-date:
  *   get:
  *     summary: Get visitors by date range
  *     tags: [Visitors]
@@ -257,7 +257,7 @@ router.get("/visits-by-date", visitorController.getVisitorsByDateRange);
 
 /**
  * @swagger
- * /api/visit/{projectName}:
+ * /visit/{projectName}:
  *   get:
  *     summary: Get visitor count for a project
  *     tags: [Visitors]
@@ -280,7 +280,7 @@ router.get("/visit/:projectName", visitorController.getVisitorCount);
 
 /**
  * @swagger
- * /api/total-visits:
+ * /total-visits:
  *   get:
  *     summary: Get total visits by project
  *     tags: [Visitors]
@@ -294,7 +294,7 @@ router.get("/total-visits", visitorController.getTotalVisits);
 
 /**
  * @swagger
- * /api/visit-trend/{projectName}:
+ * /visit-trend/{projectName}:
  *   get:
  *     summary: Get visitor trend for a project
  *     tags: [Visitors]
@@ -321,7 +321,7 @@ router.get("/visit-trend/:projectName", visitorController.getVisitorTrend);
 
 /**
  * @swagger
- * /api/visit-statistics/{projectName}:
+ * /visit-statistics/{projectName}:
  *   get:
  *     summary: Get visitor statistics for a project
  *     tags: [Visitors]
@@ -342,7 +342,7 @@ router.get("/visit-statistics/:projectName", visitorController.getVisitorStatist
 
 /**
  * @swagger
- * /api/unique-visitors-daily/{projectName}:
+ * /unique-visitors-daily/{projectName}:
  *   get:
  *     summary: Get unique visitors per day (Daily Active Users - DAU)
  *     tags: [Visitors]
@@ -379,7 +379,7 @@ router.get("/unique-visitors-daily/:projectName", visitorController.getUniqueVis
 
 /**
  * @swagger
- * /api/locations:
+ * /locations:
  *   get:
  *     summary: Get all visitor locations
  *     tags: [Visitors]
@@ -393,7 +393,7 @@ router.get("/locations", visitorController.getAllLocations);
 
 /**
  * @swagger
- * /api/devices:
+ * /devices:
  *   get:
  *     summary: Get all visitor devices
  *     tags: [Visitors]
@@ -404,5 +404,76 @@ router.get("/locations", visitorController.getAllLocations);
  *         description: Internal server error
  */
 router.get("/devices", visitorController.getAllDevices);
+
+/**
+ * @swagger
+ * /active-visitors:
+ *   get:
+ *     summary: Get currently active visitors
+ *     tags: [Visitors]
+ *     parameters:
+ *       - in: query
+ *         name: minutes
+ *         schema:
+ *           type: integer
+ *           default: 5
+ *         description: Time window in minutes to consider a visitor active
+ *     responses:
+ *       200:
+ *         description: List of active visitors
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/active-visitors", visitorController.getActiveVisitors);
+
+/**
+ * @swagger
+ * /browser-os-stats:
+ *   get:
+ *     summary: Get browser and OS statistics
+ *     tags: [Visitors]
+ *     responses:
+ *       200:
+ *         description: Browser and OS usage statistics
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/browser-os-stats", visitorController.getBrowserOsStats);
+
+/**
+ * @swagger
+ * /export-visitors:
+ *   get:
+ *     summary: Export visitors data
+ *     tags: [Visitors]
+ *     parameters:
+ *       - in: query
+ *         name: format
+ *         schema:
+ *           type: string
+ *           enum: [json, csv]
+ *           default: json
+ *         description: Export format
+ *     responses:
+ *       200:
+ *         description: Exported visitor data
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/export-visitors", visitorController.exportVisitors);
+
+/**
+ * @swagger
+ * /visitor-growth:
+ *   get:
+ *     summary: Get visitor growth over time
+ *     tags: [Visitors]
+ *     responses:
+ *       200:
+ *         description: Monthly visitor growth data
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/visitor-growth", visitorController.getVisitorGrowth);
 
 module.exports = router;
