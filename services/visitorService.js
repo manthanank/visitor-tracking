@@ -187,19 +187,36 @@ class VisitorService {
   async getVisitorStatistics(projectName) {
     const matchStage = projectName === "All" ? {} : { projectName };
 
-    const statistics = await Visitor.aggregate([
+    // Get browser statistics
+    const browserStats = await Visitor.aggregate([
       { $match: matchStage },
-      {
-        $group: {
-          _id: null,
-          mostUsedBrowser: { $first: "$userAgent" },
-          mostUsedDevice: { $first: "$device" },
-          mostVisitedLocation: { $first: "$location" },
-        },
-      },
+      { $group: { _id: "$browser", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 1 }
     ]);
 
-    return statistics[0];
+    // Get device statistics
+    const deviceStats = await Visitor.aggregate([
+      { $match: matchStage },
+      { $group: { _id: "$device", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 1 }
+    ]);
+
+    // Get location statistics
+    const locationStats = await Visitor.aggregate([
+      { $match: matchStage },
+      { $group: { _id: "$location", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 1 }
+    ]);
+
+    return {
+      _id: null,
+      mostUsedBrowser: browserStats.length > 0 ? browserStats[0]._id || "Unknown" : "Unknown",
+      mostUsedDevice: deviceStats.length > 0 ? deviceStats[0]._id || "Unknown" : "Unknown",
+      mostVisitedLocation: locationStats.length > 0 ? locationStats[0]._id || "Unknown" : "Unknown"
+    };
   }
 
   async getUniqueVisitorsDaily(projectName, startDate, endDate) {
