@@ -212,7 +212,6 @@ class VisitorService {
     ]);
 
     return {
-      _id: null,
       mostUsedBrowser: browserStats.length > 0 ? browserStats[0]._id || "Unknown" : "Unknown",
       mostUsedDevice: deviceStats.length > 0 ? deviceStats[0]._id || "Unknown" : "Unknown",
       mostVisitedLocation: locationStats.length > 0 ? locationStats[0]._id || "Unknown" : "Unknown"
