@@ -316,6 +316,77 @@ class VisitorService {
       { $sort: { _id: 1 } }
     ]);
   }
+
+  async getDailyVisitorStats(projectName, days = 7) {
+    // Generate date range for the past 'days'
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+    
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - (days - 1));
+    startDate.setHours(0, 0, 0, 0);
+    
+    // Create date range array for consistent results even on days with no visits
+    const dateRange = [];
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      dateRange.push(new Date(currentDate).toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // Create project filter
+    const matchStage = projectName === "All" ? {} : { projectName };
+    
+    // Aggregate to get daily visitor counts
+    const dailyVisits = await Visitor.aggregate([
+      {
+        $match: {
+          ...matchStage,
+          lastVisit: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$lastVisit" } },
+            ipAddress: "$ipAddress"
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$_id.date",
+          uniqueVisitors: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+    
+    // Convert to a map for easier lookup
+    const visitsMap = {};
+    dailyVisits.forEach(item => {
+      visitsMap[item._id] = item.uniqueVisitors;
+    });
+    
+    // Fill in the results for all dates in range
+    const result = dateRange.map(date => ({
+      date,
+      uniqueVisitors: visitsMap[date] || 0
+    }));
+    
+    return {
+      projectName: projectName,
+      period: {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        days: days
+      },
+      dailyStats: result,
+      totalVisitors: result.reduce((sum, day) => sum + day.uniqueVisitors, 0)
+    };
+  }
 }
 
 module.exports = new VisitorService();

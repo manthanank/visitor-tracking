@@ -262,3 +262,17 @@ exports.getVisitorGrowth = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+exports.getDailyVisitorStats = async (req, res) => {
+  const { projectName } = req.params;
+  const { days } = req.query;
+  
+  try {
+    const daysToLookBack = parseInt(days) || 7; // Default to 7 days if not specified
+    const dailyStats = await visitorService.getDailyVisitorStats(projectName, daysToLookBack);
+    res.json(dailyStats);
+  } catch (error) {
+    logger.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

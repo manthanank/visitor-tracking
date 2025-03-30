@@ -373,6 +373,33 @@ router.get("/visit-statistics/:projectName", visitorController.getVisitorStatist
  */
 router.get("/unique-visitors-daily/:projectName", visitorController.getUniqueVisitorsDaily);
 
+/**
+ * @swagger
+ * /daily-stats/{projectName}:
+ *   get:
+ *     summary: Get daily visitor statistics for a project
+ *     tags: [Visitors]
+ *     parameters:
+ *       - in: path
+ *         name: projectName
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Name of the project or "All" for all projects
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *           default: 7
+ *         description: Number of days to look back
+ *     responses:
+ *       200:
+ *         description: Daily visitor statistics
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/daily-stats/:projectName", visitorController.getDailyVisitorStats);
+
 // ==========================================
 // ANALYTICS OPERATIONS
 // ==========================================
