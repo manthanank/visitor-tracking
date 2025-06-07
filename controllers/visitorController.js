@@ -276,3 +276,184 @@ exports.getDailyVisitorStats = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+const getVisitorsWithFilters = async (req, res) => {
+  try {
+    const { projectName } = req.params;
+    const {
+      startDate,
+      endDate,
+      country,
+      city,
+      device,
+      browser,
+      referrer,
+      page = 1,
+      limit = 50,
+      sortBy = 'timestamp',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build filter object
+    const filter = { projectName };
+
+    // Date range filter
+    if (startDate || endDate) {
+      filter.timestamp = {};
+      if (startDate) filter.timestamp.$gte = new Date(startDate);
+      if (endDate) filter.timestamp.$lte = new Date(endDate);
+    }
+
+    // Location filters
+    if (country) filter.country = new RegExp(country, 'i');
+    if (city) filter.city = new RegExp(city, 'i');
+
+    // Device/Browser filters
+    if (device) filter.device = new RegExp(device, 'i');
+    if (browser) filter.browser = new RegExp(browser, 'i');
+
+    // Referrer filter
+    if (referrer) filter.referrer = new RegExp(referrer, 'i');
+
+    // Pagination
+    const skip = (page - 1) * limit;
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Execute query with filters
+    const [visitors, totalCount] = await Promise.all([
+      Visitor.find(filter)
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(parseInt(limit)),
+      Visitor.countDocuments(filter)
+    ]);
+
+    // Get filter options for frontend
+    const filterOptions = await getFilterOptions(projectName);
+
+    res.json({
+      visitors,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / limit),
+        totalCount,
+        hasNext: skip + visitors.length < totalCount,
+        hasPrev: page > 1
+      },
+      filterOptions
+    });
+  } catch (error) {
+    console.error('Error fetching filtered visitors:', error);
+    res.status(500).json({ error: 'Failed to fetch visitors' });
+  }
+};
+
+const getFilterOptions = async (projectName) => {
+  try {
+    const options = await Visitor.aggregate([
+      { $match: { projectName } },
+      {
+        $group: {
+          _id: null,
+          countries: { $addToSet: '$country' },
+          cities: { $addToSet: '$city' },
+          devices: { $addToSet: '$device' },
+          browsers: { $addToSet: '$browser' },
+          referrers: { $addToSet: '$referrer' }
+        }
+      }
+    ]);
+
+    return options[0] || {
+      countries: [],
+      cities: [],
+      devices: [],
+      browsers: [],
+      referrers: []
+    };
+  } catch (error) {
+    console.error('Error getting filter options:', error);
+    return {};
+  }
+};
+
+// Advanced analytics endpoint
+const getAdvancedAnalytics = async (req, res) => {
+  try {
+    const { projectName } = req.params;
+    const { startDate, endDate } = req.query;
+
+    const matchStage = { projectName };
+    if (startDate && endDate) {
+      matchStage.timestamp = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    const analytics = await Visitor.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: null,
+          totalVisitors: { $sum: 1 },
+          uniqueCountries: { $addToSet: '$country' },
+          uniqueCities: { $addToSet: '$city' },
+          deviceBreakdown: {
+            $push: {
+              device: '$device',
+              browser: '$browser'
+            }
+          },
+          topReferrers: { $push: '$referrer' },
+          hourlyDistribution: {
+            $push: { $hour: '$timestamp' }
+          }
+        }
+      },
+      {
+        $project: {
+          totalVisitors: 1,
+          uniqueCountriesCount: { $size: '$uniqueCountries' },
+          uniqueCitiesCount: { $size: '$uniqueCities' },
+          topCountries: '$uniqueCountries',
+          topCities: '$uniqueCities',
+          deviceStats: '$deviceBreakdown',
+          referrerStats: '$topReferrers',
+          hourlyStats: '$hourlyDistribution'
+        }
+      }
+    ]);
+
+    res.json(analytics[0] || {});
+  } catch (error) {
+    console.error('Error fetching advanced analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+};
+
+module.exports = {
+  trackVisitor: exports.trackVisitor,
+  getVisitorCount: exports.getVisitorCount,
+  getAllVisitors: exports.getAllVisitors,
+  getAllLocations: exports.getAllLocations,
+  getAllDevices: exports.getAllDevices,
+  getTotalVisits: exports.getTotalVisits,
+  getVisitorTrend: exports.getVisitorTrend,
+  filterVisitors: exports.filterVisitors,
+  deleteVisitor: exports.deleteVisitor,
+  updateVisitorInfo: exports.updateVisitorInfo,
+  getVisitorStatistics: exports.getVisitorStatistics,
+  getVisitorByIp: exports.getVisitorByIp,
+  getVisitorsByDateRange: exports.getVisitorsByDateRange,
+  getUniqueVisitorsDaily: exports.getUniqueVisitorsDaily,
+  getActiveVisitors: exports.getActiveVisitors,
+  getBrowserOsStats: exports.getBrowserOsStats,
+  exportVisitors: exports.exportVisitors,
+  getVisitorGrowth: exports.getVisitorGrowth,
+  getDailyVisitorStats: exports.getDailyVisitorStats,
+  getVisitorsWithFilters,
+  getFilterOptions,
+  getAdvancedAnalytics
+};
