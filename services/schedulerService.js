@@ -154,12 +154,18 @@ class SchedulerService {
         ? process.env.EMAIL_RECIPIENTS.split(',').map(email => email.trim())
         : [];
       
-      const cronExpression = process.env.DAILY_INSIGHTS_CRON || '0 9 * * *'; // Default: 9 AM daily
+      const cronExpression = process.env.DAILY_INSIGHTS_CRON || '0 9 * * *';
       
       if (recipients.length > 0) {
+        logger.info('Starting scheduler with recipients:', recipients);
         return this.startDailyInsightsScheduler(recipients, cronExpression);
       } else {
         logger.warn('No email recipients configured in environment variables. Scheduler not started.');
+        logger.info('Available environment variables:', {
+          emailRecipientsSet: !!process.env.EMAIL_RECIPIENTS,
+          emailUserSet: !!process.env.EMAIL_USER,
+          emailPasswordSet: !!process.env.EMAIL_PASSWORD
+        });
         return {
           success: false,
           message: 'No email recipients configured'
@@ -167,7 +173,10 @@ class SchedulerService {
       }
     } catch (error) {
       logger.error('Error configuring default scheduler:', error);
-      throw error;
+      return {
+        success: false,
+        message: error.message
+      };
     }
   }
 }
